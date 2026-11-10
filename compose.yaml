@@ -1,27 +1,22 @@
-version: '3.8'
-
 services:
   servidor1:
     build: .
-    container_name: servidor1
     environment:
       - SERVIDOR=Servidor 1
 
   servidor2:
     build: .
-    container_name: servidor2
     environment:
       - SERVIDOR=Servidor 2
 
   servidor3:
     build: .
-    container_name: servidor3
+    profiles: [tres]
     environment:
       - SERVIDOR=Servidor 3
 
   balanceador:
     image: nginx:alpine
-    container_name: balanceador
     ports:
       - "8080:80"
     volumes:
@@ -29,4 +24,3 @@ services:
     depends_on:
       - servidor1
       - servidor2
-      - servidor3

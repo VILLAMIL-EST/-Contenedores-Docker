@@ -1,0 +1,8 @@
+services:
+  balanceador:
+    volumes:
+      - ./nginx/nginx.tres.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - servidor1
+      - servidor2
+      - servidor3

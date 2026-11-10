@@ -1,90 +1,206 @@
-# 🐳 Infraestructura de Servidores con Docker, FastAPI y Nginx
+# Servidores Docker: FastAPI + Nginx
 
-![Estado](https://img.shields.io/badge/Estado-Completado-success)
-![Docker](https://img.shields.io/badge/Docker-29.9.2-blue?logo=docker)
-![Python](https://img.shields.io/badge/Python-3.11-yellow?logo=python)
-![FastAPI](https://img.shields.io/badge/FastAPI-Framework-green?logo=fastapi)
-![Nginx](https://img.shields.io/badge/Nginx-Balanceador-orange?logo=nginx)
-![Licencia](https://img.shields.io/badge/Licencia-MIT-lightgrey)
+<p align="center">
+  <img src="docs/badges/estado.svg" alt="Estado funcional" />
+  <img src="docs/badges/docker.svg" alt="Docker Compose" />
+  <img src="docs/badges/python.svg" alt="Python 3.11+" />
+  <img src="docs/badges/fastapi.svg" alt="FastAPI" />
+  <img src="docs/badges/nginx.svg" alt="Nginx" />
+  <img src="docs/badges/linux.svg" alt="Linux iniciar.sh" />
+  <img src="docs/badges/windows.svg" alt="Windows iniciar.cmd" />
+  <img src="docs/badges/curso.svg" alt="Redes y Comunicacion" />
+</p>
 
-**Descripción breve:**
-Este proyecto despliega una arquitectura de microservicios utilizando Docker Compose. Consiste en tres instancias independientes de una API REST (construida con Python y FastAPI) y un servidor Nginx que actúa como proxy inverso y balanceador de carga. Resuelve el problema de la alta disponibilidad, evitando la saturación de un solo servidor y distribuyendo equitativamente el tráfico web.
+Práctica de **Redes y Comunicación** (Universidad de Cundinamarca). Despliega APIs FastAPI detrás de Nginx: fase inicial con **2 servidores** y ampliación a **3**. El tráfico público entra por `http://localhost:8080` con balanceo round-robin.
 
-## Tabla de Contenidos
-- [Instalación](#-instalación)
-- [Uso](#-uso)
-- [Estructura del Proyecto](#-estructura-del-proyecto)
-- [Contacto](#-contacto)
+Los scripts de arranque crean un `.venv` local, instalan solo dependencias del lanzador (Typer/Rich), construyen la pila Docker, verifican `/`, `/salud` y `/docs`, muestran diez solicitudes reales y abren una **consola interactiva** para simular caídas y exportar evidencia.
 
-## Instalación
+## Tabla de contenidos
 
-### 1. Requisitos Previos
-Para ejecutar este proyecto, necesitas tener un sistema operativo Windows 10/11 (o Mac/Linux) con los siguientes componentes:
-* Docker Desktop (versión 4.0 o superior).
-* WSL 2 (Subsistema de Windows para Linux) actualizado (solo Windows).
-* Visual Studio Code (recomendado para editar el código).
+- [Requisitos](#requisitos)
+- [Ejecución rápida](#ejecución-rápida)
+- [Linux (`iniciar.sh`)](#linux-iniciarsh)
+- [Windows (`iniciar.cmd`)](#windows-iniciarcmd)
+- [Consola interactiva](#consola-interactiva)
+- [Uso manual sin lanzador](#uso-manual-sin-lanzador)
+- [Estructura del proyecto](#estructura-del-proyecto)
+- [Créditos](#créditos)
 
-### 2. Instalación del Entorno (Windows)
-Si es la primera vez que instalas Docker en Windows, sigue estos pasos cruciales para evitar errores de conexión:
+## Requisitos
 
-Paso A: Habilitar la Plataforma de Máquina Virtual
-Abre PowerShell como Administrador y ejecuta:
-Enable-WindowsOptionalFeature -Online -FeatureName VirtualMachinePlatform -All
-(Reinicia el equipo al finalizar).
+| Componente | Linux | Windows |
+|---|---|---|
+| Contenedores | Docker Engine + plugin `compose` en marcha | Docker Desktop con motor activo |
+| Backend de Docker | Nativo (no hace falta Docker Desktop) | **WSL 2** obligatorio |
+| Python | 3.11+ con `venv` y `pip` (`python3`) | 3.11+ (`py -3` o `python`) |
+| Puerto | `8080` libre | `8080` libre |
+| Red | Internet en la primera construcción de imágenes | Igual |
 
-Paso B: Instalar Docker Desktop
-Puedes descargarlo desde la página oficial o usar el gestor de paquetes de Windows (PowerShell como administrador):
-winget install -e --id Docker.DockerDesktop
+> [!NOTE]
+> Los scripts resuelven siempre la carpeta donde están los archivos (`iniciar.sh` / `iniciar.cmd`). Puedes clonar o copiar el proyecto en cualquier ruta; no dependen de una ubicación fija del disco.
 
-Paso C: Actualizar WSL
-Para que Docker Desktop funcione correctamente, el subsistema de Linux debe estar actualizado. Abre PowerShell y ejecuta:
-wsl --update
-(Reinicia el equipo y asegúrate de que el ícono de la ballena de Docker esté en verde y diga "Engine running").
+> [!WARNING]
+> No mezcles la fase de 2 y la de 3 sin apagar la anterior: ambas publican el puerto **8080**. Si el lanzador detecta contenedores previos de esta misma práctica, **no los apaga automáticamente**; usa `./iniciar.sh --detener` (o `iniciar.cmd --detener`) y vuelve a iniciar.
 
-### 3. Variables de Entorno
-El proyecto utiliza variables de entorno para diferenciar las instancias de los servidores. Estas se definen directamente en el archivo compose.yaml, por lo que no necesitas crear un archivo .env.
+## Ejecución rápida
 
-La API lee la variable SERVIDOR:
-* Para el contenedor 1: SERVIDOR=Servidor 1
-* Para el contenedor 2: SERVIDOR=Servidor 2
-* Para el contenedor 3: SERVIDOR=Servidor 3
+| Sistema | Comando de entrada | Detener |
+|---|---|---|
+| Linux | `./iniciar.sh --servidores 2` | `Ctrl+C`, `salir` o cerrar la terminal |
+| Linux (3 servidores) | `./iniciar.sh --servidores 3` | `Ctrl+C`, `salir` o cerrar la terminal |
+| Windows | `iniciar.cmd --servidores 2` | `Ctrl+C`, `salir` o cerrar la terminal |
+| Windows (3 servidores) | `iniciar.cmd --servidores 3` | `Ctrl+C`, `salir` o cerrar la terminal |
+| Recuperación (huérfanos) | `./iniciar.sh --detener` / `iniciar.cmd --detener` | Apaga la pila si quedó activa |
 
-### 4. Pasos para Instalar y Construir
-1. Clona este repositorio o descarga la carpeta del proyecto.
-2. Abre una terminal en la carpeta raíz del proyecto (donde está el archivo compose.yaml).
-3. Ejecuta el siguiente comando para descargar las imágenes y construir los contenedores:
-(docker compose up --build -d)
+`3` es el valor predeterminado si omites `--servidores`. Al salir (incluye cerrar la ventana de terminal), el lanzador hace `docker compose down` **solo** de la pila que él creó (nombre de proyecto derivado de la ruta del clon).
 
-## Uso
+URLs útiles mientras corre:
 
-Una vez que los contenedores estén corriendo (puedes verificarlo con (docker ps)), accede a los siguientes servicios desde tu navegador:
+- Principal: http://localhost:8080/
+- Salud: http://localhost:8080/salud
+- Swagger: http://localhost:8080/docs
 
-* Balanceador de Carga (Ruta Principal): Abre http://localhost:8080/. Ejemplo práctico: Recarga la página (F5) varias veces. Verás cómo el mensaje JSON alterna entre los 3 servidores (Hola desde el Servidor 1, Servidor 2, Servidor 3), demostrando el algoritmo Round Robin.
-* Documentación Interactiva (Swagger UI): Abre http://localhost:8080/docs. Aquí podrás ver la interfaz gráfica autogenerada por FastAPI, donde puedes hacer clic en "Try it out" y ejecutar las peticiones.
-* Ruta de Salud (Health Check): Abre http://localhost:8080/salud para verificar el estado del servidor que responde.
+## Linux (`iniciar.sh`)
 
-Comando principal para apagar la infraestructura:
-docker compose down
+```bash
+chmod +x iniciar.sh   # solo la primera vez si hace falta
+./iniciar.sh --servidores 2
+# cuando termines esa fase:
+./iniciar.sh --servidores 3
+```
 
-## Estructura del Proyecto
+Qué hace exactamente el script:
 
-Practica_Servidores_Docker/
-│
-├── app.py               # Código de la API REST en FastAPI
-├── Dockerfile           # Receta para construir la imagen de Python
-├── compose.yaml         # Orquestación de los 3 servidores y el balanceador
-│
-└── nginx/
-    └── nginx.conf       # Configuración del upstream y balanceo de carga
+1. Se posiciona en la raíz del proyecto.
+2. Crea `.venv` si no existe (`python3 -m venv`).
+3. Instala `requirements-cli.txt` dentro del venv (no instala paquetes globales).
+4. Ejecuta `launcher.py` con los mismos argumentos que le pasaste (`--servidores 2` o `3`).
 
+<details>
+  <summary>Detalle del flujo tras el script (común con Windows)</summary>
 
-## Contacto / Créditos
+  1. Comprueba que no haya contenedores previos de esta práctica y que el puerto 8080 esté libre.
+  2. Construye imágenes e inicia Compose (perfil `tres` + `compose.tres.yaml` solo en modo 3).
+  3. Espera salud real de cada API y del balanceador; visita `/docs`.
+  4. Registra diez solicitudes a `/` en una tabla Rich.
+  5. Abre la consola interactiva (`ayuda`, `estado`, `probar [N]`, …).
+  6. Con `Ctrl+C`, `salir` o al cerrar la terminal (`SIGHUP`/`SIGTERM`), detiene únicamente su pila Compose.
 
-* Autor Principal: [Yecid Villamil]
-* Institución: Universidad de Cundinamarca - Ingeniería de Sistemas y Computación.
-* Curso: Redes y Comunicación (CADI).
-* Enlace al Repositorio: [https://github.com/VILLAMIL-EST/-Contenedores-Docker]
-* Documentación Externa:
-  * Documentación Oficial de Docker: https://docs.docker.com/
-  * Documentación Oficial de FastAPI: https://fastapi.tiangolo.com/
-  * Documentación Oficial de Nginx: https://nginx.org/en/docs/
+</details>
+
+## Windows (`iniciar.cmd`)
+
+> [!IMPORTANT]
+> En Windows la entrada soportada es **`iniciar.cmd`** (también vale el alias `activar.cmd`).  
+> **No** uses `.\iniciar.ps1` directamente: PowerShell suele bloquear `.ps1` por ExecutionPolicy.  
+> `iniciar.cmd` llama al preparador con `-ExecutionPolicy Bypass` **solo para ese arranque**; no necesitas `Set-ExecutionPolicy RemoteSigned`.
+
+Desde CMD, PowerShell o explorador (doble clic), en la carpeta del proyecto:
+
+```bat
+iniciar.cmd --servidores 2
+:: al terminar esa fase:
+iniciar.cmd --servidores 3
+```
+
+Cadena real de arranque:
+
+`iniciar.cmd` → `scripts\windows\preparar.ps1` (Bypass) → `.venv` + `launcher.py` → misma consola interactiva que en Linux.
+
+<details>
+  <summary>Qué prepara automáticamente en Windows</summary>
+
+  1. Refresca el `PATH` de la sesión (evita el bucle “Docker no está en el PATH” justo después de `winget`).
+  2. Busca `python` / `py` y, si falta, puede ofrecer instalar Python 3.12 con `winget` (confirmación S/N).
+  3. Comprueba **WSL 2**. Si falta, puede abrir PowerShell elevado con `wsl --install --no-distribution`.
+  4. Detecta Docker Desktop en Program Files o LocalAppData; **no lo reinstala** si ya está.
+  5. Si Docker no está, puede ofrecer instalarlo con `winget`.
+  6. Inicia Docker Desktop si hace falta y espera a que el motor responda (`docker info`).
+  7. Crea `.venv`, sincroniza Typer/Rich, asegura la carpeta `informes\` y lanza la práctica.
+
+</details>
+
+> [!WARNING]
+> Si el preparador instala o activa WSL, **reinicia Windows** y vuelve a ejecutar `iniciar.cmd`. Hasta que WSL esté listo, Docker Desktop mostrará errores del tipo “WSL is not installed” y la práctica no arrancará.
+
+<details>
+  <summary>Recuperación rápida si Docker ya está instalado pero falla el PATH o WSL</summary>
+
+  1. Cierra la terminal actual.
+  2. Abre una **nueva** CMD en la carpeta del proyecto.
+  3. Ejecuta `iniciar.cmd --servidores 2`.
+  4. Si pide WSL: acepta UAC → reinicia → otra vez `iniciar.cmd`.
+  5. Confirma en Docker Desktop que el icono indique motor en marcha (“Engine running”).
+
+</details>
+
+## Consola interactiva
+
+Cuando el arranque termina, escribe un comando y pulsa **Enter**:
+
+| Comando | Acción |
+|---|---|
+| `ayuda` | Lista los comandos disponibles |
+| `estado` | Estado Docker y `/salud` de cada API + balanceador |
+| `detener 1` / `iniciar 1` | Detiene o recupera solo esa API (números válidos según modo 2 o 3) |
+| `probar` / `probar N` | N solicitudes reales a `/` (por defecto 10; servidor, duración, errores) |
+| `informe` | Exporta Markdown + CSV en `informes/` (ignorado por Git) |
+| `salir` o **Ctrl+C** | Apaga la pila propia y termina |
+
+> [!TIP]
+> Secuencia útil para el informe del taller:  
+> `estado` → `probar` → `detener 2` → `estado` → `probar 20` → `iniciar 2` → `estado` → `probar 5` → `informe`.  
+> El estado del contenedor y la respuesta HTTP pueden diferir: un contenedor “running” no se da por conectado si `/salud` falla. Los errores de red se registran tal cual; no se inventan respuestas.
+
+## Uso manual sin lanzador
+
+<details>
+  <summary>Comandos Docker Compose directos</summary>
+
+```bash
+# Fase 1 — dos servidores
+docker compose -f compose.yaml up --build -d
+docker compose -f compose.yaml down
+
+# Ampliación — tres servidores
+docker compose --profile tres -f compose.yaml -f compose.tres.yaml up --build -d
+docker compose --profile tres -f compose.yaml -f compose.tres.yaml down
+```
+
+Para depurar: `docker compose logs`. El lanzador, si falla, muestra el error de Docker al final.
+
+**Tests locales** (tras haber corrido el script al menos una vez, para tener `.venv`):
+
+```bash
+# Linux
+.venv/bin/python -m unittest discover -s tests -v
+
+# Windows
+.venv\Scripts\python.exe -m unittest discover -s tests -v
+```
+
+</details>
+
+## Estructura del proyecto
+
+| Archivo / carpeta | Rol |
+|---|---|
+| `app.py` | FastAPI: `/` y `/salud`; `SERVIDOR` distingue cada instancia |
+| `Dockerfile` | Imagen `python:3.11-slim` + Uvicorn en el puerto 8000 |
+| `compose.yaml` + `nginx/nginx.conf` | Fase de 2 servidores + Nginx en 8080 |
+| `compose.tres.yaml` + `nginx/nginx.tres.conf` | Ampliación a 3 servidores |
+| `launcher.py` / `interactive.py` | Orquestación, pruebas y export de informes |
+| `iniciar.sh` | Entrada Linux |
+| `iniciar.cmd` / `activar.cmd` | Entrada Windows (alias incluido) |
+| `scripts/windows/preparar.ps1` | Bootstrap Windows (PATH, WSL, Docker, venv) |
+| `iniciar.ps1` | Solo delega en `iniciar.cmd`; no es la vía recomendada |
+| `requirements-cli.txt` | Typer/Rich del lanzador |
+| `tests/` | Pruebas de modos, wrappers, consola e informes |
+| `docs/badges/` | Badges SVG del README |
+| `informes/` | Salida local de `informe` (no versionada) |
+
+## Créditos
+
+- **Autor original:** Yecid Villamil · Universidad de Cundinamarca, Ingeniería de Sistemas y Computación
+- **Repositorio:** [VILLAMIL-EST/-Contenedores-Docker](https://github.com/VILLAMIL-EST/-Contenedores-Docker)
+- Documentación: [Docker](https://docs.docker.com/) · [FastAPI](https://fastapi.tiangolo.com/) · [Nginx](https://nginx.org/en/docs/) · [WSL](https://learn.microsoft.com/windows/wsl/)
